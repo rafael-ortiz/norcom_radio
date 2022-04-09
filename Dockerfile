@@ -1,6 +1,8 @@
 FROM sysrun/multimon-ng:latest
-
-RUN apt update && apt install -y soapysdr-tools python3-soapysdr python3-numpy soapysdr-module-hackrf libsoapysdr-dev rtl-sdr git
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+RUN apt update && apt install -y soapysdr-tools python3-soapysdr python3-numpy soapysdr-module-hackrf libsoapysdr-dev rtl-sdr git python3-pip
+RUN pip3 install coloredlogs verboselogs
 
 RUN git clone "https://github.com/rxseger/rx_tools" && \
     cd rx_tools && \
@@ -8,8 +10,5 @@ RUN git clone "https://github.com/rxseger/rx_tools" && \
     make 
 
 COPY . /app
-CMD rtl_fm -f 152007500 -s 22050 - |\
-multimon-ng -t raw -a POCSAG1200 -f alpha - |\
-xargs -n1 -d'\n' /app/process_line.py
-
-
+ENV COLOREDLOGS_LOG_FORMAT='%(asctime)s - %(message)s'
+CMD /app/listen.sh 
