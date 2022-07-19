@@ -14,7 +14,7 @@ def process_line(line):
 
     # Extract valid payload
     m = re.match(
-        "POCSAG1200: Address: +(\d+)  Function: \d  Alpha: ([A-Za-z0-9#: <>\/*\"\-\(\)'.,?]+).*",
+        "POCSAG1200: Address: +(\d+)  Function: \d  Alpha: ([A-Za-z0-9#;:@ <>\/*\"\-\(\)'.,?]+).*",
         line,
     )
     if not m:
@@ -45,31 +45,6 @@ def process_line(line):
             logger.info(page)
             return page
     return
-    # Idenify Snohomish pages
-    sno_match = re.match(SnohomishPage.pattern, payload)
-    if sno_match:
-        page = SnohomishPage(address, payload)
-        logger.info(page)
-        return page
-
-    # Identify NORCOM pages
-
-    norcom_match = re.match(NORCOMPage.pattern, payload)
-    if norcom_match:
-        page = NORCOMPage(address, payload)
-        logger.info(page)
-        return page
-
-    # Identify Address Change:
-    address_change_pattern = "  ADDRESS CHANGE:?(.*)#(.*)#(.*)"
-    address_change_match = re.match(address_change_pattern, payload)
-    if address_change_match:
-        logger.info(payload)
-        return
-    # Warn about unclassified messages
-    logger.warning("Address:" + address + ", Payload:" + payload)
-    return
-
 
 def get_subclasses(mod, cls):
     """Yield the classes in module ``mod`` that inherit from ``cls``"""

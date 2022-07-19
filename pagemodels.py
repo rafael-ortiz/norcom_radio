@@ -24,13 +24,14 @@ class Page:
         self.page_type = page_type
         self.pager_address = address
         self.description = payload
-        self.time = datetime.datetime.now().isoformat()
+        self.time = datetime.datetime.now().astimezone().isoformat()
 
     def __str__(self):
         return repr((self.__dict__))
 
 
 class SnohomishPage(Page):
+    page_type = 'SNOHOMISH'
     pattern = "  >>([A-Z0-9\- ]+)<<(.+)"
     channel_pattern = " * FIRE ?TAC ?(\d\d)(.*)"
     location_pattern = " *([^\/]*) *\/ +([^\/]*) +\/ +(.*)"
@@ -38,7 +39,7 @@ class SnohomishPage(Page):
     unit_pattern = "([A-Z0-9]+) +\*([A-Z0-9, ]+)\*(.*)"
 
     def __init__(self, address, payload):
-        super().__init__(self.__class__.__name__, address, payload)
+        super().__init__(self.page_type, address, payload)
         m = re.match(self.pattern, payload)
         self.type = m.group(1)
         if " - " in self.type:
@@ -61,33 +62,40 @@ class SnohomishPage(Page):
         m = re.match(self.unit_pattern, self.description)
         if m:
             # self.station = m.group(1)
-            self.units = m.group(2)
+            self.units = [i.strip() for i in m.group(2).strip().split(",")]
             self.description = m.group(3).strip()
         self.description = self.description.strip()
 
 
 class NORCOMPage(Page):
-    pattern = "  (.*)#(.*)FTAC(\d)(.*)#LAT:?(\d+) *#LON:?(\d+)(.*)"
+    page_type = 'NORCOM'
+    #pattern = "  (.*)#(.*)FTAC(\d)(.*)#LAT:?(\d+) *#LON:?(\d+)(.*)"
+    pattern = "  ([\w -]+); \*(FTAC - \d)?\*;  ([\w\d \/]+)?; ([\d\w, @]+); ([\d\w ,]+); ([\d.]+);(-[\d.]+)"
 
     def __init__(self, address, payload):
-        super().__init__(self.__class__.__name__, address, payload)
+        super().__init__(self.page_type, address, payload)
         m = re.match(self.pattern, payload)
-        self.address = m.group(1).strip()
-        self.type = m.group(2)[-30:].strip()
+        self.address = m.group(4).strip()
+        self.type = m.group(1).strip()
         if " - " in self.type:
             self.type, self.type2 = self.type.split(" - ")[0:2]
-        self.description = m.group(2)[:-30].strip()
-        self.channel = m.group(3)
-        self.units = m.group(4).strip().split(" ")[0].split(",")
-        self.lat = m.group(5)
-        self.lon = m.group(6)
+        self.description = m.group(3)
+        if self.description:
+            self.description = self.description.strip()
+        self.channel = m.group(2)
+        if " - " in self.channel:
+            self.channel = self.channel.split(" - ")[1].strip()
+        self.units = [i.strip() for i in m.group(5).strip().split(", ")]
+        self.lat = m.group(6)
+        self.lon = m.group(7)
 
 
 class NORCOMAddressChange(Page):
+    page_type = 'NORCOM_ADDRESS_CHANGE'
     pattern = "  ADDRESS CHANGE:?(.*)#(.*)#(.*)"
 
     def __init__(self, address, payload):
-        super().__init__(self.__class__.__name__, address, payload)
+        super().__init__(self.page_type, address, payload)
         m = re.match(self.pattern, payload)
         self.address = m.group(1).strip()
         # lat/long on address changes are blank
