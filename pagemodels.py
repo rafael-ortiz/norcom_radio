@@ -37,6 +37,7 @@ class SnohomishPage(Page):
     location_pattern = " *([^\/]*) *\/ +([^\/]*) +\/ +(.*)"
     location_pattern2 = " *([^\/]*) *\/\/ *(.*)"
     unit_pattern = "([A-Z0-9]+) +\*([A-Z0-9, ]+)\*(.*)"
+    alarm_pattern = "-? ?Alarm Level: ?(\d+) (.*)"
 
     def __init__(self, address, payload):
         super().__init__(self.page_type, address, payload)
@@ -59,6 +60,10 @@ class SnohomishPage(Page):
             self.address = n.group(1)
             # self.location = ""
             self.description = n.group(2)
+        #filter out alarm levels
+        m = re.match(self.alarm_pattern, self.address)
+        if m:
+            self.address = m.group(2)
         m = re.match(self.unit_pattern, self.description)
         if m:
             # self.station = m.group(1)
@@ -83,7 +88,7 @@ class NORCOMPage(Page):
         if self.description:
             self.description = self.description.strip()
         self.channel = m.group(2)
-        if " - " in self.channel:
+        if self.channel and " - " in self.channel:
             self.channel = self.channel.split(" - ")[1].strip()
         self.units = [i.strip() for i in m.group(5).strip().split(", ")]
         self.lat = m.group(6)
