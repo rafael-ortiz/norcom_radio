@@ -1,0 +1,6 @@
+.venv/
+*.pyc
+data/
+mqtt/
+mosquitto/
+local_settings.py
