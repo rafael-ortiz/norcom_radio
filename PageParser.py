@@ -252,6 +252,11 @@ class PageNorcom(Page):
         
         logger.debug("Attempting to parse as NORCOM")
 
+        if "PAGEGATE KEEP ALIVE NORMAL" in self.alpha:
+            self.call_type = "PAGEGATE KEEPALIVE"
+            self.keepalive = True
+            return True
+
         try:
             parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","").replace(";;", ";").split(';')
 
