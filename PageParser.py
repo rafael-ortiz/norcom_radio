@@ -82,6 +82,9 @@ class Page:
 
     timestamp = 0
     parsed = False
+    keepalive = False
+    skipped = False
+    skip_reason = "unknown"
 
     agency = PageAgency.NONE
 
@@ -104,9 +107,6 @@ class Page:
 
     units = []
     geo = {}
-
-    skipped = False
-    skip_reason = "unknown"
 
     # TODO: Move ignorelist handling into PageParser
     capcode_ignorelist = []
@@ -169,12 +169,10 @@ class PageSnohomish(Page):
 
         parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","")
 
-        if "PAGEGATE KEEP ALIVE" in parse_alpha:
-            # TODO: Do something useful with the keepalives
-            self.skipped = True
-            self.skip_reason = "keepalive"
-            logger.info("Ignoring page: PAGEGATE Keepalive")
-            return False
+        if "PAGEGATE KEEP ALIVE NORMAL" in parse_alpha:
+            self.call_type = "PAGEGATE KEEPALIVE"
+            self.keepalive = True
+            return True
 
         try:
             type_match = re.match(r">>([A-Za-z0-9 -]+)<<", parse_alpha)

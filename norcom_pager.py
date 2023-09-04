@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
-import re
-import json
 import os
 import sys
-import time
-import ssl
 import random
 import logging
+import argparse
+# import re
+# import json
+# import time
+# import ssl
 
 import paho.mqtt.client as mqtt
 
-import utils
 import settings
 from PageParser import PageParser
 
@@ -31,11 +31,14 @@ def mqtt_on_disconnect(client, userdata, rc):
 
 def publish_page(page, mqtt_client):
     """ Publish the page data to mqtt broker """
-    # this is where all the various outputs would go
-    topic = "page/{}/{}".format(
-        str(page.agency).lower(),
-        str(page.call_type).replace(" ", "_").lower()
-    )
+
+    if page.keepalive:
+        topic = "page/pagegate_keepalive"
+    else:
+        topic = "page/{}/{}".format(
+            str(page.agency).lower(),
+            str(page.call_type).replace(" ", "_").lower()
+        )
 
     logging.info("Publishing page to MQTT topic %s", topic)
 
@@ -48,6 +51,38 @@ def publish_page(page, mqtt_client):
     logging.debug("Message %d queued for publishing", res.mid)
     # res.wait_for_publish()
 
+def init_args():
+    """ Create argument parser and add arguments. """
+    argparser = argparse.ArgumentParser(
+        description="NORCOM Page Collector"
+    )
+
+    argparser.add_argument('-d', '--debug', action='store_true', help="Enable Debug Output")
+    argparser.add_argument('-o', '--output', help='Output file')
+    argparser.add_argument('-f', '--format', help='Output format (json, csv)')
+    argparser.add_argument('-m', '--mqtt', help='MQTT host')
+    argparser.add_argument('-p', '--port', help='MQTT Port')
+    argparser.add_argument('-t', '--topic', help='MQTT subscribe topic')
+    return argparser
+
+def init_settings(cli_args):
+    """ Update global settings based on cli arguments """
+
+    if cli_args.debug:
+        settings.DEBUG = True
+
+    if cli_args.output:
+        settings.OUTPUT_FILE_PATH = os.path.expanduser(cli_args.output)
+        settings.OUTPUT_FORMAT = cli_args.format or "json"
+        settings.OUTPUT_FILE = True
+
+    if cli_args.mqtt:
+        settings.MQTT['HOST'] = cli_args.host
+        settings.MQTT['PORT'] = cli_args.port
+        if ( settings.MQTT['HOST'] and settings.MQTT['PORT'] ):
+            settings.MQTT_ENABLE = True
+
+    return settings
 
 def init_logging(settings):
     """ initialize logger """
@@ -123,9 +158,9 @@ def init_mqtt(mqtt_config):
     return client
 
 def main():
-    argparser = utils.setup_args()
+    argparser = init_args()
     args = argparser.parse_args()
-    settings = utils.init_settings(args)
+    settings = init_settings(args)
 
     try: 
         init_logging(settings)
@@ -154,7 +189,6 @@ def main():
 
                 logger.debug("Received %s", " ".join(line.split()[:3]))
 
-                # TODO: Add some capcode matching and/or filtering
                 page = parser.parse(line)
 
                 if page is None:
@@ -171,10 +205,21 @@ def main():
                     # print(page.to_json())
                     if mclient is not None:
                         publish_page(page, mclient)
+                elif page.keepalive:
+                    last_keepalive = page.timestamp
+                    logger.info("Parsed %s page to %s: %s",
+                                page.agency,
+                                page.capcode,
+                                page.get_calltype()
+                            )
+                    if mclient is not None:
+                        if getattr(settings, 'MQTT_PUBLISH_KEEPALIVES', True):
+                            publish_page(page, mclient)
+
                 else:
                     page = None
-                    continue                    
-            # break
+
+                # break
         except KeyboardInterrupt:
             if mclient is not None:
                 mclient.disconnect(reasoncode=0)

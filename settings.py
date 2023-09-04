@@ -2,8 +2,13 @@
 DEBUG = False
 LOGFILE = None
 
+# Publish incident pages to MQTT
 MQTT_ENABLE = False
 
+# Publish Pagergate keepalives to MQTT
+MQTT_PUBLISH_KEEPALIVES = True
+
+# MQTT Broker config
 MQTT = {
     'HOST': None,
     'PORT': 1883,
