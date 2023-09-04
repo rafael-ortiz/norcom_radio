@@ -3,7 +3,7 @@ import os
 
 import settings
 
-def setup_parser():
+def setup_args():
     """ Create argument parser and add arguments. """
     parser = argparse.ArgumentParser(
         description="NORCOM Page Collector"

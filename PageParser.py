@@ -23,13 +23,68 @@ class PageAgency(Enum):
         
     def __str__(self):
         return self.name
+    
+class PageParser:
+    pattern = r"POCSAG1200:\s+Address:\s+(\d+)\s+Function:\s+\d\s+Alpha:\s+(.*)$"
+    pattern_re = None
+
+    last_keepalive = 0
+
+    def __init__(self, pattern=None):
+        if pattern is not None:
+            self.pattern = pattern
+
+        try:
+            self.pattern_re = re.compile(self.pattern)
+        except re.error as err:
+            logging.error("Failed to load pattern: %s", err)
+            raise ValueError("expected valid regex pattern, got %s", pattern)
+
+    def parse(self, line):
+        matches = self.pattern_re.match(line)
+        if matches is None:
+            logger.warning("Ignoring page: unknown page format")
+            logger.debug("Unknown format: %s", line)
+            return None
+
+        try:
+            raw_page = matches.group(0)
+            capcode = matches.group(1)
+            alpha = matches.group(2)
+        except IndexError as err:
+            # invalid or malformed page
+            logger.info("Ignoring page: malformed or invalid format")
+            logger.debug("%s: %s", err, line)
+            return None
+        
+        # return {'raw': raw_page, 'capcode': capcode, 'alpha': alpha}
+        return self.create_page(raw_page, capcode, alpha)
+
+    def create_page(self, raw_page, capcode, page_alpha):
+        
+        agency = PageAgency.from_capcode(capcode)
+
+        if agency == PageAgency.NORCOM:
+            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
+        elif agency == PageAgency.VALCOM:
+            # Use the NORCOM processor until we see enough of them to decide otherwise
+            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
+        elif agency == PageAgency.SNO911:
+            return PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha)
+        else:
+            # Unknown capcode
+            logging.warn("Ignoring page: unknown CAPCODE")
+
+        return None
 
 class Page:
+    # TODO: Make the internal structure more closely match the json model
+
     timestamp = 0
     parsed = False
 
     agency = PageAgency.NONE
-    
+
     raw = None
     capcode = None
     alpha = None
@@ -53,6 +108,7 @@ class Page:
     skipped = False
     skip_reason = "unknown"
 
+    # TODO: Move ignorelist handling into PageParser
     capcode_ignorelist = []
 
     def __init__(self, raw, capcode, alpha):
@@ -80,6 +136,7 @@ class Page:
             return self.call_type
 
     def to_json(self):
+        # I would not consider this a stable interface quite yet
         page_data = {
             'timestamp': self.timestamp,
             'capcode': self.capcode,
@@ -126,7 +183,7 @@ class PageSnohomish(Page):
                 # This is probably not a valid event
                 self.skipped = True
                 self.skip_reason = "malformed"
-                logger.warn("PARSE FAILED: missing call type %s", self.alpha)
+                logger.warning("PARSE FAILED: missing call type %s", self.alpha)
                 return False
 
             call_types = type_match.group(1)
@@ -178,14 +235,13 @@ class PageSnohomish(Page):
                 self.units = [ k.strip() for k in unit_match.group(1).split(',') ]
                 self.call_notes = call_details.replace(unit_match.group(0), '').strip()
         except (IndexError, ValueError) as err:
-            logger.warn("PARSE FAILED: {} {}".format(err, self.alpha))
+            logger.warning("PARSE FAILED: %s %s".format(err, self.alpha))
             self.skip_reason = "malformed"
             self.skipped = True
             return False
 
         self.parsed = True
         return True
-
 
 class PageNorcom(Page):
     def __init__(self, raw, capcode, alpha, agency=PageAgency.NORCOM):
@@ -205,16 +261,17 @@ class PageNorcom(Page):
                 # Missing some values
                 self.skip_reason = "malformed"
                 self.skipped = True
-                logger.warn("PARSE FAILED: Missing expected field {}", self.alpha)
+                logger.error("PARSE FAILED: Missing expected field %s", self.alpha)
                 return False
             elif len(parse_alpha) > 7:
                 self.skip_reason = "malformed"
                 self.skipped = True
-                logger.warn("PARSE FAILED: unexpected field {}", self.alpha)
+                logger.error("PARSE FAILED: unexpected field %s", self.alpha)
                 return False
 
             (call, channel, addr_name, addr_street, units, geo_lat, geo_long) = [ k.strip() for k in parse_alpha ]
 
+            call = re.sub(r'[<>]', '', call)
             if "-" in call:
                 (self.call_type, self.call_subtype) = [ k.strip() for k in call.split('-', 1) ]
             else:
@@ -229,7 +286,7 @@ class PageNorcom(Page):
             self.geo = {'lat': geo_lat, 'long': geo_long }
         except (ValueError, IndexError) as err:
             # Couldn't unpack values correctly
-            logger.warn("PARSE FAILED: {} {}".format(err, self.alpha))
+            logger.error("PARSE FAILED: {} {}".format(err, self.alpha))
             self.skipped = True
             self.skip_reason = "malformed"
             return False

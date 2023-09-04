@@ -13,22 +13,29 @@ import paho.mqtt.client as mqtt
 
 import utils
 import settings
-import PageParser
+from PageParser import PageParser
 
 logger = logging.getLogger(__name__)
 
 def mqtt_on_publish(client, userdata, mid):
+    """ Callback for mqtt client publish() """
     logger.debug("[MQTT] Published message id %d", mid)
 
 def mqtt_on_log(client, userdata, level, buf):
+    """ Callback for mqtt client logging """
     logging.debug(buf)
 
 def mqtt_on_disconnect(client, userdata, rc):
+    """ Client for mqtt dicsconnects """
     logging.info("MQTT client disconnected")
 
 def publish_page(page, mqtt_client):
+    """ Publish the page data to mqtt broker """
     # this is where all the various outputs would go
-    topic = "page/{}/{}".format(str(page.agency), page.call_type)
+    topic = "page/{}/{}".format(
+        str(page.agency).lower(),
+        str(page.call_type).replace(" ", "_").lower()
+    )
 
     logging.info("Publishing page to MQTT topic %s", topic)
 
@@ -43,7 +50,7 @@ def publish_page(page, mqtt_client):
 
 
 def init_logging(settings):
-    """Setup logging """
+    """ initialize logger """
 
     logfile = getattr(settings, "LOGFILE", None)
     if logfile is not None:
@@ -62,6 +69,20 @@ def init_logging(settings):
 
 
 def init_mqtt(mqtt_config):
+    """ 
+    Connect to the mqtt broker and return a client object
+
+    mqtt_config (dict) with the necessary config elements
+
+        MQTT = {
+            'HOST': None,
+            'PORT': 1883,
+            'USER': None,
+            'PASS': None,
+        }    
+    """
+    # TODO: Add TLS support
+
     def mqtt_on_connect(client, userdata, flags, rc):
         if rc == 0:
             logging.info("Connected to MQTT broker")
@@ -80,7 +101,7 @@ def init_mqtt(mqtt_config):
         logging.error("Failed to init mqtt: invalid port number")
         return None
 
-    client_id = f'norcom-pager-{random.randint(0, 1000)}'
+    client_id = "norcom-pager-{}".format(random.randint(0, 1000))
 
     # Set Connecting Client ID
     client = mqtt.Client(client_id)
@@ -101,30 +122,9 @@ def init_mqtt(mqtt_config):
         return None
     return client
 
-def create_page(raw_page, capcode, page_alpha):
-    
-    agency = PageParser.PageAgency.from_capcode(capcode)
-
-    if agency == PageParser.PageAgency.NORCOM:
-        return PageParser.PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
-    elif agency == PageParser.PageAgency.VALCOM:
-        # Use the NORCOM processor until we see enough of them to decide otherwise
-        return PageParser.PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
-    elif agency == PageParser.PageAgency.SNO911:
-        return PageParser.PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha)
-    else:
-        # Unknown capcode
-        # TODO: add some logging
-        print("Unknown CAPCODE: {}".format(raw_page))
-        return None
-
-    return None
-
-
-
 def main():
-    parser = utils.setup_parser()
-    args = parser.parse_args()
+    argparser = utils.setup_args()
+    args = argparser.parse_args()
     settings = utils.init_settings(args)
 
     try: 
@@ -145,59 +145,41 @@ def main():
         while not mclient.is_connected():
             pass
 
-    page_pattern = re.compile(r"POCSAG1200:\s+Address:\s+(\d+)\s+Function:\s+\d\s+Alpha:\s+(.*)$")
-
+    parser = PageParser()
+    
     while True:
         try:
             for line in sys.stdin:
                 line = line.strip()
 
                 logger.debug("Received %s", " ".join(line.split()[:3]))
-                matches = page_pattern.match(line)
-                
-                if matches is None:
-                    logger.info("Ignoring page: unknown page format")
-                    logger.debug("Unknown format: %s", line)
-                    continue
-
-                try:
-                    raw_page = matches.group(0)
-                    capcode = matches.group(1)
-                    alpha = matches.group(2)
-                except IndexError as err:
-                    # invalid or malformed page
-                    logger.info("Ignoring page: malformed or invalid format")
-                    logger.debug("%s: %s", err, line)
-                    return None
 
                 # TODO: Add some capcode matching and/or filtering
-                page = create_page(raw_page, capcode, alpha)
-                
-                if page is not None:
-                    if page.parsed:
-                        logger.info("Parsed %s page to %s: %s; %s; %s",
-                                    page.agency,
-                                    page.capcode,
-                                    page.get_calltype(),
-                                    page.channel,
-                                    page.address_raw
-                                )
-                        # print(page.to_json())
-                        if mclient is not None:
-                            publish_page(page, mclient)
-                    else:
-                        page = None
-                        continue
-                else:
-                    logger.warn("Failed to parse page: %s", line)
+                page = parser.parse(line)
+
+                if page is None:
                     continue
+
+                if page.parsed:
+                    logger.info("Parsed %s page to %s: %s; %s; %s",
+                                page.agency,
+                                page.capcode,
+                                page.get_calltype(),
+                                page.channel,
+                                page.address_raw
+                            )
+                    # print(page.to_json())
+                    if mclient is not None:
+                        publish_page(page, mclient)
+                else:
+                    page = None
+                    continue                    
             # break
         except KeyboardInterrupt:
             if mclient is not None:
                 mclient.disconnect(reasoncode=0)
             print("")
             sys.exit(0)
-
 
 
 main()

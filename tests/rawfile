@@ -1,16 +1,16 @@
 Enabled demodulators: POCSAG1200
 POCSAG1200: Address: 1471533  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  Safeway Overlake; 15000 NE 24TH ST, RM; A112; 47.6315667214337;-122.140592198666<EOT>
-POCSAG1200: Address: 1471062  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  ; 3229 95TH PL NE, CH; A101, E105; 47.6399899080024;-122.214811803986<EOT>
-POCSAG1200: Address: 1471071  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  ; 3229 95TH PL NE, CH; A101, E105; 47.6399899080024;-122.214811803986<EOT>
-POCSAG1200: Address: 1319432  Function: 0  Alpha:   >> - FLUP <<  21902 56TH AVE W, Mountlake Terrace /  / TF159 *61T1* REF STOLEN MOTORCYLCE 23-13613 -<EOT><NUL>
-POCSAG1200: Address: 1315671  Function: 0  Alpha:   >>MED1 -  << FIRE TAC 03 7990 200TH ST NE 92, Arlington /  / BH2717 *A47, M46* 66YO VOMITTING 66-year-old, Male, Conscious, Breathing.  CC Text: Sick Person (Specific Diagnosis)  Caller<EOT><NUL><NUL>
-POCSAG1200: Address: 1315679  Function: 0  Alpha:   >>MED1 -  << FIRE TAC 03 7990 200TH ST NE 92, Arlington /  / BH2717 *A47, M46* 66YO VOMITTING 66-year-old, Male, Conscious, Breathing.  CC Text: Sick Person (Specific Diagnosis)  Caller<EOT><NUL><NUL>
+POCSAG1200: Address: 1471062  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  ; 1234 55TH PL NE, CH; A101, E105; 47.4028162893998;-122.928362824893<EOT>
+POCSAG1200: Address: 1471071  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  ; 1234 55TH PL NE, CH; A101, E105; 47.4028162893998;-122.928362824893<EOT>
+POCSAG1200: Address: 1319432  Function: 0  Alpha:   >> - FLUP <<  92836 92TH AVE W, Mountlake Terrace /  / TF159 *61T1* REF STOLEN MOTORCYLCE 23-13613 -<EOT><NUL>
+POCSAG1200: Address: 1315671  Function: 0  Alpha:   >>MED1 -  << FIRE TAC 03 8112 500TH ST NE 92, Arlington /  / BH2717 *A47, M46* 66YO VOMITTING 66-year-old, Male, Conscious, Breathing.  CC Text: Sick Person (Specific Diagnosis)  Caller<EOT><NUL><NUL>
 POCSAG1200: Address: 1310050  Function: 0  Alpha:   SNO911: PAGEGATE KEEP ALIVE NORMAL<EOT><NUL><NUL>
-POCSAG1200: Address: 1470068  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  Pavilion Properties; 13533 ODELL RD NE, KC; A167, STA167; 47.719161069158;-121.932361089455<EOT>
+POCSAG1200: Address: 1470068  Function: 0  Alpha:   Aid - Emergency; *FTAC - 1*;  Pavilion Properties; 92734 ODELL RD NE, KC; A167, STA167; 47.923845011610;-121.103843859108<EOT>
 POCSAG1200: Address: 1310050  Function: 0  Alpha:   SNO911: PAGEGATE KEEP ALIVE NORMAL<EOT><NUL><NUL>
 POCSAG1200: Address: 1470010  Function: 0  Alpha:   Aid - Non-Emergency; *FTAC - 1*;  Medina Park; 1199 84TH AVE NE, ME; 3D1, 3D2, E110; 47.6210066414537;-122.228094065273
 POCSAG1200: Address: 1310050  Function: 0  Alpha:   SNO911: PAGEGATE KEEP ALIVE NORMAL<EOT><NUL><NUL>
-POCSAG1200: Address: 1470004  Function: 0  Alpha:   Natural Gas - Minor; *FTAC - 2*;  ; 12004 SE 51ST ST, BE; B101, E104, E109; 47.5577376641077;-122.177181380615<EOT>
-POCSAG1200: Address: 1470009  Function: 0  Alpha:   Natural Gas - Minor; *FTAC - 2*;  ; 12004 SE 51ST ST, BE; B101, E104, E109; 47.5577376641077;-122.177181380615<EOT>
-POCSAG1200: Address: 1471025  Function: 0  Alpha:   Natural Gas - Minor; *FTAC - 2*;  ; 12004 SE 51ST ST, BE; B101, E104, E109; 47.5577376641077;-122.177181380615<EOT>
-POCSAG1200: Address: 1471062  Function: 0  Alpha:   Natural Gas - Minor; *FTAC - 2*;  ; 12004 SE 51ST ST, BE; B101, E104, E109; 47.5577376641077;-122.177181380615<EOT>
+POCSAG1200: Address: 1470004  Function: 0  Alpha:   Natural Gas - Minor; *FTAC - 2*;  ; 92735 SE 14ST ST, BE; B101, E104, E109; 47.9362828374410;-122.826402738132<EOT>
+POCSAG1200: Address: 1315679  Function: 0  Alpha:   >>BLS2 -  << FIRE TAC 03 205 E BURKE AVE, Arlington /  / BH2917 *M46* RP FELL AND CAN NOT GET UP  1st Party Alone - 85-year-old, Female, Conscious, Breathing.  CC Text: Falls Dispatch C<EOT><NUL><NUL>
+POCSAG1200: Address: 1315770  Function: 0  Alpha:   >>BLS1 -  << FIRE TAC 03 117 1/2 E DIVISION ST, Arlington /  / BH2917 *E46* MALE DROPPED GLASS VASE ON ARM, BLEEDING 45-year-old, Male, Conscious, Breathing.  CC Text: Hemorrhage (Bleed<EOT><NUL><NUL>
+POCSAG1200: Address: 1316259  Function: 0  Alpha:   >>MED1 -  <<  9263 RUCKER /  /  *M1* <EOT><NUL>
+POCSAG1200: Address: 1471062  Function: 0  Alpha:   <NEW CALL>; **;  Station 1; 766 BELLEVUE WAY SE, BE; E101; 47.6030977263985;-122.200940697266<EOT>
