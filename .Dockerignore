@@ -1,5 +1,0 @@
-.venv/
-data/
-mqtt/
-mosquito/
-local_settings.py
