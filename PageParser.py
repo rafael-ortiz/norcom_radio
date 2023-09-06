@@ -30,6 +30,8 @@ class PageParser:
 
     last_keepalive = 0
 
+    capcode_ignorelist = []
+
     def __init__(self, pattern=None):
         if pattern is not None:
             self.pattern = pattern
@@ -55,6 +57,11 @@ class PageParser:
             # invalid or malformed page
             logger.info("Ignoring page: malformed or invalid format")
             logger.debug("%s: %s", err, line)
+            return None
+        
+        if capcode in PageParser.capcode_ignorelist:
+            logging.info("Ignoring page: CAPCODE is on ignore list")
+            logger.debug("Ignored CAPCODE %s %s", capcode, alpha)
             return None
         
         # return {'raw': raw_page, 'capcode': capcode, 'alpha': alpha}
@@ -108,20 +115,11 @@ class Page:
     units = []
     geo = {}
 
-    # TODO: Move ignorelist handling into PageParser
-    capcode_ignorelist = []
-
     def __init__(self, raw, capcode, alpha):
         self.timestamp = time.time()
         self.raw = raw
         self.capcode = capcode
         self.alpha = alpha
-
-        if self.capcode in Page.capcode_ignorelist:
-            logging.info("Ignoring page: CAPCODE is on ignore list")
-            self.skipped = True
-            self.skip_reason = "ignore list"
-            return False
 
         self.parse_page()
 
@@ -148,11 +146,13 @@ class Page:
                 'address': self.address_raw,
                 'geo': self.geo,
             },
+            'incident': {
+                'type': self.call_type,
+                'subtype': self.call_subtype,
+            },
             'alarm_level': self.alarm_level,
-            'call_type': self.call_type,
-            'call_subtype': self.call_subtype,
-            'call_id': self.call_id,
-            'call_notes': self.call_notes,
+            'reference': self.call_id,
+            'cad_notes': self.call_notes
         }
         return json.dumps(page_data)
 

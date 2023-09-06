@@ -5,8 +5,8 @@ import sys
 import random
 import logging
 import argparse
+import json
 # import re
-# import json
 # import time
 # import ssl
 
@@ -23,11 +23,11 @@ def mqtt_on_publish(client, userdata, mid):
 
 def mqtt_on_log(client, userdata, level, buf):
     """ Callback for mqtt client logging """
-    logging.debug(buf)
+    logger.debug(buf)
 
 def mqtt_on_disconnect(client, userdata, rc):
     """ Client for mqtt dicsconnects """
-    logging.info("MQTT client disconnected")
+    logger.info("MQTT client disconnected")
 
 def publish_page(page, mqtt_client):
     """ Publish the page data to mqtt broker """
@@ -40,7 +40,7 @@ def publish_page(page, mqtt_client):
             str(page.call_type).replace(" ", "_").lower()
         )
 
-    logging.info("Publishing page to MQTT topic %s", topic)
+    logger.info("Publishing page to MQTT topic %s", topic)
 
     message = page.to_json()
 
@@ -48,8 +48,20 @@ def publish_page(page, mqtt_client):
         topic=topic,
         payload=message.encode('utf-8')
     )
-    logging.debug("Message %d queued for publishing", res.mid)
+    logger.debug("Message %d queued for publishing", res.mid)
     # res.wait_for_publish()
+
+def write_page(page, fh, format="json"):
+    """ Write contents of a page to file """
+    logger.info("Writing page to file")
+
+    try:
+        fh.write("{},\n".format(page.to_json()))
+    except OSError as err:
+        logger.error("Failed to write to file: %s", err)
+        return False
+    
+    return True
 
 def init_args():
     """ Create argument parser and add arguments. """
@@ -102,6 +114,24 @@ def init_logging(settings):
 
     logging.basicConfig(filename=logfile, format=logformat, datefmt='%Y-%m-%d %H:%M:%S', level=loglevel)
 
+def init_outfile(outfile_path):
+    """ Initialize output file """
+    # TODO: add some way to rotate or split files
+    
+    if outfile_path is None:
+        return None
+
+    outfile = os.path.expanduser(outfile_path)
+
+    try:
+        fh = open(outfile, 'a')
+    except OSError as err:
+        logger.error("Failed to open output file %s", err)
+        return None
+    
+    logger.info("Saving page data to %s", outfile)
+    return fh
+
 
 def init_mqtt(mqtt_config):
     """ 
@@ -120,20 +150,20 @@ def init_mqtt(mqtt_config):
 
     def mqtt_on_connect(client, userdata, flags, rc):
         if rc == 0:
-            logging.info("Connected to MQTT broker")
+            logger.info("Connected to MQTT broker")
         else:
-            logging.error("Failed to connect to MQTT broker: return code %d", rc)
+            logger.error("Failed to connect to MQTT broker: return code %d", rc)
 
     broker = mqtt_config.get('HOST', None)
 
     if broker is None:
-        logging.error("Failed to init mqtt: invalid or missing hostname")
+        logger.error("Failed to init mqtt: invalid or missing hostname")
         return None
 
     try:
         port = int(mqtt_config.get('PORT', 1883))
     except (TypeError, ValueError):
-        logging.error("Failed to init mqtt: invalid port number")
+        logger.error("Failed to init mqtt: invalid port number")
         return None
 
     client_id = "norcom-pager-{}".format(random.randint(0, 1000))
@@ -153,7 +183,7 @@ def init_mqtt(mqtt_config):
         client.connect(broker, port)
         client.loop_start()
     except OSError as err:
-        logging.error("Failed to connect to broker %s", err)
+        logger.error("Failed to connect to broker %s", err)
         return None
     return client
 
@@ -169,6 +199,12 @@ def main():
         sys.exit(1)
 
     logger.info("Initialized logging")
+
+    outfile = None
+    if getattr(settings, 'OUTPUT_FILE', None):
+        outfile = init_outfile(getattr(settings, 'OUTPUT_FILE_PATH', None))
+        if outfile is None:
+            sys.exit(1)
 
     mclient = None
     if getattr(settings, 'MQTT_ENABLE', False):
@@ -205,6 +241,8 @@ def main():
                     # print(page.to_json())
                     if mclient is not None:
                         publish_page(page, mclient)
+                    if outfile is not None:
+                        write_page(page, outfile)
                 elif page.keepalive:
                     last_keepalive = page.timestamp
                     logger.info("Parsed %s page to %s: %s",
@@ -215,6 +253,11 @@ def main():
                     if mclient is not None:
                         if getattr(settings, 'MQTT_PUBLISH_KEEPALIVES', True):
                             publish_page(page, mclient)
+
+                    if outfile is not None:
+                        if getattr(settings, 'OUTPUT_FILE_KEEPALIVES', False):
+                            write_page(page, outfile)
+                            
 
                 else:
                     page = None

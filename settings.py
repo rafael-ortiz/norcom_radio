@@ -21,7 +21,10 @@ OUTPUT_FILE = False
 OUTPUT_FILE_PATH = None
 
 ## Format to write the output lines. Currently only json is supported
-OUTPUT_FORMAT = "json"
+OUTPUT_FILE_FORMAT = "json"
+
+# Write Pagergate keepalives to file
+OUTPUT_FILE_KEEPALIVES = False
 
 
 try:
