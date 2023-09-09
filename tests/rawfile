@@ -14,3 +14,5 @@ POCSAG1200: Address: 1315679  Function: 0  Alpha:   >>BLS2 -  << FIRE TAC 03 205
 POCSAG1200: Address: 1315770  Function: 0  Alpha:   >>BLS1 -  << FIRE TAC 03 117 1/2 E DIVISION ST, Arlington /  / BH2917 *E46* MALE DROPPED GLASS VASE ON ARM, BLEEDING 45-year-old, Male, Conscious, Breathing.  CC Text: Hemorrhage (Bleed<EOT><NUL><NUL>
 POCSAG1200: Address: 1316259  Function: 0  Alpha:   >>MED1 -  <<  9263 RUCKER /  /  *M1* <EOT><NUL>
 POCSAG1200: Address: 1471062  Function: 0  Alpha:   <NEW CALL>; **;  Station 1; 766 BELLEVUE WAY SE, BE; E101; 47.6030977263985;-122.200940697266<EOT>
+POCSAG1200: Address: 1470016  Function: 0  Alpha:   Gas Spill/Absorbent; *FTAC - 2*;  Costco Redmond Gas; 7605 188TH AVE NE, RM; L116; 47.6726486999812;-122.091418386362<EOT><NUL>
+POCSAG1200: Address: 1312527  Function: 0  Alpha:   >>AID - COLP <<  9300 BLK SR 9 SE, Snohomish / SR 9 AT CITY LIMITS SNO S / 31D04 HSR *17D1* HEAD ON COL, <EOT><NUL><NUL>
