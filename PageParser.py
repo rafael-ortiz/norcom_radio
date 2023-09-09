@@ -213,7 +213,12 @@ class PageSnohomish(Page):
                 if (len(address_match.groups()) == 3):
                     self.call_id = address_match.group(3)
 
-            call_details = parse_alpha.replace(address_match.group(0)[:-1], '')
+                call_details = parse_alpha.replace(address_match.group(0)[:-1], '')
+            else:
+                self.skipped = True
+                self.skip_reason = "malformed"
+                logger.warning("PARSE FAILED: couldn't parse address fields %s", self.alpha)
+                return False
 
             unit_match = re.match(r"\*([A-Za-z0-9\s,]+)\*?", call_details)
             # Some pages are too long to include all of the units

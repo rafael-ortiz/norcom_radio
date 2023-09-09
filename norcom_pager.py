@@ -37,7 +37,7 @@ def publish_page(page, mqtt_client):
     else:
         topic = "page/{}/{}".format(
             str(page.agency).lower(),
-            str(page.call_type).replace(" ", "_").lower()
+            str(page.call_type).replace(" ", "_").replace("/", "_").lower()
         )
 
     logger.info("Publishing page to MQTT topic %s", topic)
