@@ -264,20 +264,34 @@ class PageNorcom(Page):
 
         try:
             parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","").replace(";;", ";").split(';')
-
-            if len(parse_alpha) < 7:
-                # Missing some values
-                self.skip_reason = "malformed"
-                self.skipped = True
-                logger.error("PARSE FAILED: Missing expected field %s", self.alpha)
-                return False
-            elif len(parse_alpha) > 7:
+ 
+            if len(parse_alpha) > 7:
                 self.skip_reason = "malformed"
                 self.skipped = True
                 logger.error("PARSE FAILED: unexpected field %s", self.alpha)
                 return False
+            
+            (call, channel, addr_name, addr_street, units, geo_lat, geo_long) = [ None ] * 7
 
-            (call, channel, addr_name, addr_street, units, geo_lat, geo_long) = [ k.strip() for k in parse_alpha ]
+            try:
+                call = parse_alpha[0].strip()
+                channel = parse_alpha[1].strip()
+                addr_name = parse_alpha[2].strip()
+                addr_street = parse_alpha[3].strip()
+                units = parse_alpha[4].strip()
+                geo_lat = parse_alpha[5].strip()
+                geo_long = parse_alpha[6].strip()
+            except IndexError:
+                pass
+
+
+            if addr_street is None:
+                # Don't even bother parsing the rest
+                self.skip_reason = "malformed"
+                self.skipped = True
+                logger.error("PARSE FAILED: Missing expected fields %s", self.alpha)
+                return False
+
 
             call = re.sub(r'[<>]', '', call)
             if "-" in call:
@@ -289,7 +303,11 @@ class PageNorcom(Page):
             self.address_name = addr_name
             self.address_raw = addr_street
 
-            self.units = [ k.strip() for k in units.split(',') ]
+            if units is not None:
+                for unit in units.split(','):
+                    if len(unit.strip()) < 3:
+                        continue
+                    self.units.append(unit.strip())
 
             self.geo = {'lat': geo_lat, 'long': geo_long }
         except (ValueError, IndexError) as err:
