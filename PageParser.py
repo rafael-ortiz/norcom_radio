@@ -303,6 +303,7 @@ class PageNorcom(Page):
             self.address_name = addr_name
             self.address_raw = addr_street
 
+            self.units = []
             if units is not None:
                 for unit in units.split(','):
                     if len(unit.strip()) < 3:
