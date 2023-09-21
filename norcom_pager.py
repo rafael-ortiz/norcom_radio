@@ -14,6 +14,7 @@ import paho.mqtt.client as mqtt
 
 import settings
 from PageParser import PageParser
+from PageParser import PageAgency
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,24 @@ def mqtt_on_disconnect(client, userdata, rc):
     """ Client for mqtt dicsconnects """
     logger.info("MQTT client disconnected")
 
-def publish_page(page, mqtt_client):
-    """ Publish the page data to mqtt broker """
+def publish_page(data, mqtt_client):
+    """ Publish unparsed page text to mqtt broker """
+
+    topic = "page/text/{}".format(data['agency'].lower())
+
+    logger.info("Publishing page to MQTT topic %s", topic)
+
+    message = json.dumps(data)
+
+    res = mqtt_client.publish(
+        topic=topic,
+        payload=message.encode('utf-8')
+    )
+    logger.debug("Message %d queued for publishing", res.mid)
+
+
+def publish_incident(page, mqtt_client):
+    """ Publish the parsed page to mqtt broker """
 
     if page.keepalive:
         topic = "page/pagegate_keepalive"
@@ -40,7 +57,7 @@ def publish_page(page, mqtt_client):
             str(page.call_type).replace(" ", "_").replace("/", "_").lower()
         )
 
-    logger.info("Publishing page to MQTT topic %s", topic)
+    logger.info("Publishing incident to MQTT topic %s", topic)
 
     message = page.to_json()
 
@@ -51,7 +68,7 @@ def publish_page(page, mqtt_client):
     logger.debug("Message %d queued for publishing", res.mid)
     # res.wait_for_publish()
 
-def write_page(page, fh, format="json"):
+def write_incident(page, fh, format="json"):
     """ Write contents of a page to file """
     logger.info("Writing page to file")
 
@@ -240,9 +257,9 @@ def main():
                             )
                     # print(page.to_json())
                     if mclient is not None:
-                        publish_page(page, mclient)
+                        publish_incident(page, mclient)
                     if outfile is not None:
-                        write_page(page, outfile)
+                        write_incident(page, outfile)
                 elif page.keepalive:
                     last_keepalive = page.timestamp
                     logger.info("Parsed %s page to %s: %s",
@@ -252,12 +269,45 @@ def main():
                             )
                     if mclient is not None:
                         if getattr(settings, 'MQTT_PUBLISH_KEEPALIVES', True):
-                            publish_page(page, mclient)
+                            publish_incident(page, mclient)
 
                     if outfile is not None:
                         if getattr(settings, 'OUTPUT_FILE_KEEPALIVES', False):
-                            write_page(page, outfile)
-                            
+                            write_incident(page, outfile)
+                elif page.agency == PageAgency.NORCOM:
+                    # Couldn't parse as an incident page, but we'll 
+                    # see if the page text is worth grabbing
+
+                    if not mclient:
+                        page = None
+                        continue
+
+                    # Make sure it's not a SNO011 page sent to NORCOM capcodes (mutual-aid)
+                    if page.alpha.startswith('>>'):
+                        page = None
+                        continue
+
+                    page_text = page.alpha.replace("<EOT>","").replace("<NUL>","")
+
+                    if len(page_text) < 1:
+                        page = None
+                        continue
+
+                    if not " " in page_text:
+                        page = None
+                        continue
+
+
+                    logger.info("Raw Alpha: %s", page.alpha)
+                        
+                    page_data = {
+                        'timestamp': page.timestamp,
+                        'text': page_text,
+                        'agency': str(page.agency),
+                        'capcode': page.capcode,
+                    }
+
+                    publish_page(page_data, mclient)
 
                 else:
                     page = None
