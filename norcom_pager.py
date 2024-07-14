@@ -6,8 +6,8 @@ import random
 import logging
 import argparse
 import json
+import time
 # import re
-# import time
 # import ssl
 
 import paho.mqtt.client as mqtt
@@ -234,6 +234,9 @@ def main():
             pass
 
     parser = PageParser()
+
+    ka_last_received = time.time()
+    ka_last_missed = 0
     
     while True:
         try:
@@ -261,7 +264,7 @@ def main():
                     if outfile is not None:
                         write_incident(page, outfile)
                 elif page.keepalive:
-                    last_keepalive = page.timestamp
+                    ka_last_received = page.timestamp
                     logger.info("Parsed %s page to %s: %s",
                                 page.agency,
                                 page.capcode,
@@ -311,6 +314,23 @@ def main():
 
                 else:
                     page = None
+
+            #check if we've missed a keepalive
+            ka_check = time.time()
+            ka_max = getattr(settings, 'KEEPALIVE_MISSED', 3) * 1
+            ka_interval = getattr(settings, 'KEEPALIVE_INTERVAL', 3) * 1
+            ka_delta = round(ka_check - ka_last_missed) if (ka_last_missed > 0) else round(ka_check - ka_last_received)
+
+            if (ka_delta > ka_interval):
+                logger.info("No keepalive received for %d seconds", ka_interval)
+                ka_last_missed = ka_check
+
+                if ka_max > 0:
+                    if round(ka_check - ka_last_received) >= (ka_interval * ka_max):
+                        logger.error("Too many missed keepalives, I'm giving up.")
+                        if mclient is not None:
+                            mclient.disconnect(reasoncode=0)
+                        sys.exit(1)
 
                 # break
         except KeyboardInterrupt:

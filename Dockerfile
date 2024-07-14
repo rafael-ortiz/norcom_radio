@@ -27,5 +27,6 @@ ENV TZ="America/Los_Angeles"
 ENV COLOREDLOGS_LOG_FORMAT='%(asctime)s - %(message)s'
 ENV RTL_DEVICE=/dev/null
 ENV FREQ=152007500
+ENV PPM=0
 
 CMD /app/listen.sh 

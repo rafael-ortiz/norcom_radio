@@ -26,6 +26,8 @@ OUTPUT_FILE_FORMAT = "json"
 # Write Pagergate keepalives to file
 OUTPUT_FILE_KEEPALIVES = False
 
+KEEPALIVE_INTERVAL = 120
+KEEPALIVE_MISSED = 3
 
 try:
     from local_settings import *

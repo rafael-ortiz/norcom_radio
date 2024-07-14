@@ -6,6 +6,7 @@
 IMAGE=norcom_radio
 CONTAINER=norcom_radio
 FREQ=152007500
+PPM=50
 
 all: build run
 
@@ -25,4 +26,5 @@ reload:
 clean:
 	@echo "Deleting container"
 	docker kill ${CONTAINER} || docker rm ${CONTAINER}
+	docker ps | grep ${CONTAINER}
 
