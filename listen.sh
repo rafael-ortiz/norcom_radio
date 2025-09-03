@@ -1,4 +1,4 @@
 rtl_fm -f $FREQ -s 22050 -p $PPM - | \
-    multimon-ng -t raw -a POCSAG1200 -f alpha - |\
+    multimon-ng --timestamp -t raw -a POCSAG1200 -f alpha - |\
     tee -a /app/raw |\
-    /app/norcom_pager.py
+    /app/norcom_pager.py -d
