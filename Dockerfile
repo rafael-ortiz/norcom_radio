@@ -1,27 +1,42 @@
-FROM sysrun/multimon-ng:latest as base
-RUN apt update 
-RUN apt install -y python3-pip tzdata 
-#RUN apt update && apt install -y soapysdr-tools python3-soapysdr python3-numpy soapysdr-module-hackrf libsoapysdr-dev rtl-sdr git python3-pip tzdata
+FROM ubuntu:noble AS base
+RUN apt-get update
+RUN apt-get install -y python3-pip libusb-1.0-0 tzdata
 
-FROM base as builder
-RUN apt install -y soapysdr-tools libsoapysdr-dev git
-RUN git clone "https://github.com/rxseger/rx_tools" && \
-    cd rx_tools && \
-    cmake . && \
+
+FROM base AS builder
+RUN apt-get install -y build-essential libusb-1.0-0-dev git cmake pkg-config debhelper libsoapysdr-dev libssl-dev
+WORKDIR /rtl-sdr
+RUN git clone --depth 1 --branch v1.3.6 "https://github.com/rtlsdrblog/rtl-sdr-blog" && \
+    cd rtl-sdr-blog && \
+    dpkg-buildpackage -b --no-sign && \
+    mkdir build && cd build && \
+    cmake ../ && make && \
+    cd ../.. && \
+    dpkg -i librtlsdr0_*.deb && \
+    dpkg -i librtlsdr-dev_*.deb
+
+
+WORKDIR /multimon
+RUN git clone --depth 1 --branch 1.4.1 "https://github.com/EliasOenal/multimon-ng.git" && \
+    cd multimon-ng && \
+    mkdir build && cd build && \
+    cmake .. && \
     make
 
-FROM base as runner
-COPY --from=builder /rx_tools/rx_* /usr/local/bin/
+FROM base AS runner
+COPY --from=builder /rtl-sdr/rtl-sdr-blog/build/src/rtl_* /usr/local/bin/
+COPY --from=builder /multimon/multimon-ng/build/multimon-ng /usr/local/bin/
+COPY --from=builder /rtl-sdr/librtlsdr0_*.deb /tmp/
+RUN dpkg -i /tmp/librtlsdr0_*.deb && \
+    rm -rf /tmp/librtlsdr0_*.deb
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# #RUN apt update && apt install -y soapysdr-tools python3-soapysdr python3-numpy soapysdr-module-hackrf rtl-sdr git python3-pip tzdata
-# RUN apt install -y python3-pip
 
 WORKDIR /app
 COPY . .
-RUN pip3 install -r /app/requirements.txt
+RUN pip install -r /app/requirements.txt --break-system-packages
 
 ENV TZ="America/Los_Angeles"
 ENV COLOREDLOGS_LOG_FORMAT='%(asctime)s - %(message)s'
@@ -29,4 +44,4 @@ ENV RTL_DEVICE=/dev/null
 ENV FREQ=152007500
 ENV PPM=0
 
-CMD /app/listen.sh 
+CMD ["/app/listen.sh"]
