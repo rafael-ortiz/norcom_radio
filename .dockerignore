@@ -2,5 +2,6 @@
 data/
 tests/
 mqtt/
+dev/
 mosquitto/
 local_settings.py
