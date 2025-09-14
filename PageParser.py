@@ -339,7 +339,7 @@ class PageNorcom(Page):
         return True
     
 class PageValcom(Page):
-    def __init__(self, raw, capcode, alpha, agency=PageAgency.VALCOM):
+    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.VALCOM):
         super().__init__(raw, capcode, alpha)
         self.agency = agency
 
@@ -347,6 +347,6 @@ class PageValcom(Page):
         if self.alpha is None:
             return None
         
-        logger.debug("Attempting to parse as VALCOM")
-        # Ignoring valcom pages
+        # logger.debug("Attempting to parse as VALCOM")
+        logger.debug("VALCOM: Discarding page - not yet implemented")
         return None
