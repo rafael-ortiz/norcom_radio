@@ -14,7 +14,7 @@ import paho.mqtt.client as mqtt
 
 import settings
 from PageParser import PageParser
-from PageParser import PageAgency
+from PageParser import PagePSAP
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def mqtt_on_disconnect(client, userdata, rc):
 def publish_page(data, mqtt_client):
     """ Publish unparsed page text to mqtt broker """
 
-    topic = "page/text/{}".format(data['agency'].lower())
+    topic = "page/text/{}".format(data['psap'].lower())
 
     logger.info("Publishing page to MQTT topic %s", topic)
 
@@ -53,7 +53,7 @@ def publish_incident(page, mqtt_client):
         topic = "page/pagegate_keepalive"
     else:
         topic = "page/{}/{}".format(
-            str(page.agency).lower(),
+            str(page.psap).lower(),
             str(page.call_type).replace(" ", "_").replace("/", "_").lower()
         )
 
@@ -252,7 +252,7 @@ def main():
 
                 if page.parsed:
                     logger.info("Parsed %s page to %s: %s; %s; %s",
-                                page.agency,
+                                page.psap,
                                 page.capcode,
                                 page.get_calltype(),
                                 page.channel,
@@ -266,7 +266,7 @@ def main():
                 elif page.keepalive:
                     ka_last_received = page.timestamp
                     logger.info("Parsed %s page to %s: %s",
-                                page.agency,
+                                page.psap,
                                 page.capcode,
                                 page.get_calltype()
                             )
@@ -277,7 +277,7 @@ def main():
                     if outfile is not None:
                         if getattr(settings, 'OUTPUT_FILE_KEEPALIVES', False):
                             write_incident(page, outfile)
-                elif page.agency == PageAgency.NORCOM:
+                elif page.psap == PagePSAP.NORCOM:
                     # Couldn't parse as an incident page, but we'll 
                     # see if the page text is worth grabbing
 
@@ -306,7 +306,8 @@ def main():
                     page_data = {
                         'timestamp': page.timestamp,
                         'text': page_text,
-                        'agency': str(page.agency),
+                        'agency': str(page.psap), # TODO: Remove agency after transition
+                        'psap': str(page.psap),
                         'capcode': page.capcode,
                     }
 
