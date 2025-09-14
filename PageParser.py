@@ -15,13 +15,15 @@ class PageAgency(Enum):
 
     @classmethod
     def from_capcode(cls, capcode):
-        if capcode[:3] in ["147", "117"]:
+        if capcode[:3] in ["147"]:
             return cls(1)
         elif capcode[:3] in ["131"]:
             return cls(2)
+        if capcode[:3] in ["117"]:
+            return cls(3)
         else:
             return cls(0)
-        
+
     def __str__(self):
         return self.name
     
@@ -335,3 +337,16 @@ class PageNorcom(Page):
         
         self.parsed = True
         return True
+    
+class PageValcom(Page):
+    def __init__(self, raw, capcode, alpha, agency=PageAgency.VALCOM):
+        super().__init__(raw, capcode, alpha)
+        self.agency = agency
+
+    def parse_page(self):
+        if self.alpha is None:
+            return None
+        
+        logger.debug("Attempting to parse as VALCOM")
+        # Ignoring valcom pages
+        return None
