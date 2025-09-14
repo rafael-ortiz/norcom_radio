@@ -3,6 +3,7 @@ import re
 import time
 import logging
 from enum import Enum
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,8 @@ class PageAgency(Enum):
         return self.name
     
 class PageParser:
-    pattern = r"POCSAG1200:\s+Address:\s+(\d+)\s+Function:\s+\d\s+Alpha:\s+(.*)$"
+    # pattern = r"POCSAG1200:\s+Address:\s+(\d+)\s+Function:\s+\d\s+Alpha:\s+(.*)$"
+    pattern = r"([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}):\s+POCSAG1200:\s+Address:\s+(\d+)\s+Function:\s+\d\s+Alpha:\s+(.*)$"
     pattern_re = None
 
     last_keepalive = 0
@@ -53,8 +55,9 @@ class PageParser:
 
         try:
             raw_page = matches.group(0)
-            capcode = matches.group(1)
-            alpha = matches.group(2)
+            timestamp = matches.group(1)
+            capcode = matches.group(2)
+            alpha = matches.group(3)
         except IndexError as err:
             # invalid or malformed page
             logger.info("Ignoring page: malformed or invalid format")
@@ -67,19 +70,19 @@ class PageParser:
             return None
         
         # return {'raw': raw_page, 'capcode': capcode, 'alpha': alpha}
-        return self.create_page(raw_page, capcode, alpha)
+        return self.create_page(raw_page, capcode, alpha, timestamp)
 
-    def create_page(self, raw_page, capcode, page_alpha):
+    def create_page(self, raw_page, capcode, page_alpha, timestamp):
         
         agency = PageAgency.from_capcode(capcode)
 
         if agency == PageAgency.NORCOM:
-            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
+            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         elif agency == PageAgency.VALCOM:
             # Use the NORCOM processor until we see enough of them to decide otherwise
-            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha)
+            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         elif agency == PageAgency.SNO911:
-            return PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha)
+            return PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         else:
             # Unknown capcode
             logging.warn("Ignoring page: unknown CAPCODE")
@@ -117,16 +120,28 @@ class Page:
     units = []
     geo = {}
 
-    def __init__(self, raw, capcode, alpha):
-        self.timestamp = time.time()
+    def __init__(self, raw, capcode, alpha, ts=None):
         self.raw = raw
         self.capcode = capcode
         self.alpha = alpha
+
+        if ts is None:
+            self.timestamp = time.time()
+        else:
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            self.timestamp = int(dt.timestamp())
 
         self.parse_page()
 
     def parse_page(self):
         raise NotImplementedError("Parser not implemented")
+    
+    def get_timestamp(self, ts):
+        if ts is None:
+            return time.time()
+        
+        dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        return int(dt.timestamp())
     
     def get_calltype(self):
         """ Re-join the call type components if they're not empty """
@@ -159,7 +174,7 @@ class Page:
         return json.dumps(page_data)
 
 class PageSnohomish(Page):
-    def __init__(self, raw, capcode, alpha, agency=PageAgency.SNO911):
+    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.SNO911):
         super().__init__(raw, capcode, alpha)
         self.agency = agency
         
@@ -249,7 +264,7 @@ class PageSnohomish(Page):
         return True
 
 class PageNorcom(Page):
-    def __init__(self, raw, capcode, alpha, agency=PageAgency.NORCOM):
+    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.NORCOM):
         super().__init__(raw, capcode, alpha)
         self.agency = agency
 
