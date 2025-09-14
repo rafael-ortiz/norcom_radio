@@ -243,7 +243,7 @@ def main():
             for line in sys.stdin:
                 line = line.strip()
 
-                logger.debug("Received %s", " ".join(line.split()[:3]))
+                logger.debug("Received %s", " ".join(line.split()[:5]))
 
                 page = parser.parse(line)
 

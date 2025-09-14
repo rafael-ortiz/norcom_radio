@@ -206,7 +206,7 @@ class PageSnohomish(Page):
                 self.alarm_level = alarm_match.group(1)
                 parse_alpha = parse_alpha.replace(alarm_match.group(0), '').strip()
             
-            address_match = re.match(r"(.*)\/(.*?)\/\s+([A-Z0-9]+)?\s+\*", parse_alpha)
+            address_match = re.match(r"(.*)\/(.*?)\/\s+([A-Z0-9]+)?\s?\*", parse_alpha)
             if address_match is not None:
                 self.address_raw = address_match.group(1)
                 self.address_name = address_match.group(2)
