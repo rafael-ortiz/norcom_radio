@@ -340,9 +340,9 @@ class PageNorcom(Page):
         return True
     
 class PageValcom(Page):
-    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.VALCOM):
+    def __init__(self, raw, capcode, alpha, ts=None, psap=PagePSAP.VALCOM):
         super().__init__(raw, capcode, alpha)
-        self.agency = agency
+        self.psap = psap
 
     def parse_page(self):
         if self.alpha is None:
