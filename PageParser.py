@@ -79,8 +79,8 @@ class PageParser:
         if agency == PageAgency.NORCOM:
             return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         elif agency == PageAgency.VALCOM:
-            # Use the NORCOM processor until we see enough of them to decide otherwise
-            return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
+            # VALCOM processor will just discard them for now
+            return PageValcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         elif agency == PageAgency.SNO911:
             return PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         else:
