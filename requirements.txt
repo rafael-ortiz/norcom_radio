@@ -1,4 +1,10 @@
+annotated-types==0.7.0
 coloredlogs==15.0.1
 humanfriendly==10.0
 paho-mqtt==1.6.1
+pydantic==2.10.6
+pydantic-settings==2.8.1
+pydantic_core==2.27.2
+python-dotenv==1.0.1
+typing_extensions==4.13.2
 verboselogs==1.7

@@ -8,11 +8,17 @@ import argparse
 import json
 import time
 # import re
-# import ssl
+import ssl
 
 import paho.mqtt.client as mqtt
 
-import settings
+# import settings
+from settings import Settings
+
+# Create a settings instance so code below can access configured values
+settings = Settings()
+print(settings)
+
 from PageParser import PageParser
 from PageParser import PagePSAP
 
@@ -30,6 +36,19 @@ def mqtt_on_disconnect(client, userdata, rc):
     """ Client for mqtt dicsconnects """
     logger.info("MQTT client disconnected")
 
+
+def mqtt_safe_publish(mqtt_client, topic, payload, qos=0, retain=False):
+    """Publish with SSL/OSError handling. Returns publish result or None on error."""
+    try:
+        res = mqtt_client.publish(topic=topic, payload=payload, qos=qos, retain=retain)
+        return res
+    except ssl.SSLError as err:
+        logger.error("MQTT TLS error while publishing to %s: %s", topic, err)
+        return None
+    except OSError as err:
+        logger.error("MQTT network error while publishing to %s: %s", topic, err)
+        return None
+
 def publish_page(data, mqtt_client):
     """ Publish unparsed page text to mqtt broker """
 
@@ -39,11 +58,9 @@ def publish_page(data, mqtt_client):
 
     message = json.dumps(data)
 
-    res = mqtt_client.publish(
-        topic=topic,
-        payload=message.encode('utf-8')
-    )
-    logger.debug("Message %d queued for publishing", res.mid)
+    res = mqtt_safe_publish(mqtt_client, topic, message.encode('utf-8'))
+    if res is not None:
+        logger.debug("Message %d queued for publishing", res.mid)
 
 
 def publish_incident(page, mqtt_client):
@@ -61,11 +78,9 @@ def publish_incident(page, mqtt_client):
 
     message = page.to_json()
 
-    res = mqtt_client.publish(
-        topic=topic,
-        payload=message.encode('utf-8')
-    )
-    logger.debug("Message %d queued for publishing", res.mid)
+    res = mqtt_safe_publish(mqtt_client, topic, message.encode('utf-8'))
+    if res is not None:
+        logger.debug("Message %d queued for publishing", res.mid)
     # res.wait_for_publish()
 
 def write_incident(page, fh, format="json"):
@@ -106,9 +121,9 @@ def init_settings(cli_args):
         settings.OUTPUT_FILE = True
 
     if cli_args.mqtt:
-        settings.MQTT['HOST'] = cli_args.host
-        settings.MQTT['PORT'] = cli_args.port
-        if ( settings.MQTT['HOST'] and settings.MQTT['PORT'] ):
+        settings.MQTT_HOST = cli_args.mqtt
+        settings.MQTT_PORT = int(cli_args.port) if cli_args.port else 1883
+        if ( settings.MQTT_HOST and settings.MQTT_PORT ):
             settings.MQTT_ENABLE = True
 
     return settings
@@ -116,12 +131,13 @@ def init_settings(cli_args):
 def init_logging(settings):
     """ initialize logger """
 
-    logfile = getattr(settings, "LOGFILE", None)
+    logfile = settings.LOGFILE
+    # logfile = getattr(settings, "LOGFILE", None)
     if logfile is not None:
         logfile = os.path.expanduser(logfile)
     
-    loglevel = getattr(settings, "LOGLEVEL", logging.INFO)
-    debug = getattr(settings, "DEBUG", False) or (loglevel == logging.DEBUG)
+    loglevel = settings.LOGLEVEL
+    debug = settings.DEBUG or (loglevel == logging.DEBUG)
     
     if debug:
         loglevel = logging.DEBUG
@@ -150,20 +166,11 @@ def init_outfile(outfile_path):
     return fh
 
 
-def init_mqtt(mqtt_config):
+def init_mqtt(mqtt_host, mqtt_port, mqtt_user=None, mqtt_pass=None, mqtt_certfile=None, mqtt_keyfile=None, mqtt_cacerts=None):
     """ 
     Connect to the mqtt broker and return a client object
 
-    mqtt_config (dict) with the necessary config elements
-
-        MQTT = {
-            'HOST': None,
-            'PORT': 1883,
-            'USER': None,
-            'PASS': None,
-        }    
     """
-    # TODO: Add TLS support
 
     def mqtt_on_connect(client, userdata, flags, rc):
         if rc == 0:
@@ -171,14 +178,14 @@ def init_mqtt(mqtt_config):
         else:
             logger.error("Failed to connect to MQTT broker: return code %d", rc)
 
-    broker = mqtt_config.get('HOST', None)
+    broker = mqtt_host
 
     if broker is None:
         logger.error("Failed to init mqtt: invalid or missing hostname")
         return None
 
     try:
-        port = int(mqtt_config.get('PORT', 1883))
+        port = int(mqtt_port)
     except (TypeError, ValueError):
         logger.error("Failed to init mqtt: invalid port number")
         return None
@@ -187,8 +194,15 @@ def init_mqtt(mqtt_config):
 
     # Set Connecting Client ID
     client = mqtt.Client(client_id)
-    if mqtt_config.get('USER', ''):
-        client.username_pw_set(mqtt_config['USER'], mqtt_config.get('PASS', ''))
+    if mqtt_user:
+        client.username_pw_set(mqtt_user, mqtt_pass)
+    
+    if mqtt_certfile is not None:
+        client.tls_set(
+            certfile=mqtt_certfile,
+            keyfile=mqtt_keyfile,
+            ca_certs=mqtt_cacerts
+        )
 
     client.on_log=mqtt_on_log
     client.on_connect = mqtt_on_connect
@@ -198,16 +212,18 @@ def init_mqtt(mqtt_config):
     logger.info("Connecting to MQTT broker at {}:{}...".format(broker, port))
     try:
         client.connect(broker, port)
-        client.loop_start()
     except OSError as err:
         logger.error("Failed to connect to broker %s", err)
+        return None
+    except ssl.SSLError as err:
+        logger.error("Failed to connect to broker due to TLS error: %s", err)
         return None
     return client
 
 def main():
     argparser = init_args()
     args = argparser.parse_args()
-    settings = init_settings(args)
+    init_settings(args)
 
     try: 
         init_logging(settings)
@@ -218,20 +234,55 @@ def main():
     logger.info("Initialized logging")
 
     outfile = None
-    if getattr(settings, 'OUTPUT_FILE', None):
-        outfile = init_outfile(getattr(settings, 'OUTPUT_FILE_PATH', None))
+    if settings.OUTPUT_FILE:
+        outfile = init_outfile(settings.OUTPUT_FILE)
         if outfile is None:
             sys.exit(1)
 
     mclient = None
-    if getattr(settings, 'MQTT_ENABLE', False):
-        mclient = init_mqtt(getattr(settings, 'MQTT', {}))
-        if mclient is None:
+    if settings.MQTT_ENABLE:
+        logger.info("Setting up MQTT client...")
+        try:
+            mclient = init_mqtt(
+                settings.MQTT_HOST,
+                settings.MQTT_PORT,
+                settings.MQTT_USER,
+                settings.MQTT_PASS,
+                settings.MQTT_CERTFILE,
+                settings.MQTT_KEYFILE,
+                settings.MQTT_CACERTS
+            )
+        except FileNotFoundError as err:
+            logger.error("MQTT client init failure: %s", err)
+            mclient = None
             sys.exit(1)
 
-        # Block while we wait - this probably needs some safeties added
+
+        # Drive the MQTT network loop from the main thread so we can catch
+        # TLS/SSL errors that occur during socket reads.
+        connect_start = time.time()
+        connect_timeout = 15
         while not mclient.is_connected():
-            pass
+            try:
+                # process network events for a short time
+                mclient.loop(timeout=0.1)
+            except ssl.SSLError as err:
+                logger.error("MQTT TLS failure during connection/read: %s", err)
+                mclient = None
+                break
+            except OSError as err:
+                logger.error("MQTT network error during connect: %s", err)
+                mclient = None
+                break
+
+            if time.time() - connect_start > connect_timeout:
+                logger.error("Timeout waiting for MQTT connection")
+                mclient = None
+                break
+
+        if mclient is None:
+            logger.error("Failed to initialize MQTT client, exiting.")
+            sys.exit(1)
 
     parser = PageParser()
 
@@ -306,7 +357,6 @@ def main():
                     page_data = {
                         'timestamp': page.timestamp,
                         'text': page_text,
-                        'agency': str(page.psap), # TODO: Remove agency after transition
                         'psap': str(page.psap),
                         'capcode': page.capcode,
                     }

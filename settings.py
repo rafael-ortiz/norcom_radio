@@ -1,35 +1,44 @@
+from typing import Optional, ClassVar
 
-DEBUG = False
-LOGFILE = None
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Publish incident pages to MQTT
-MQTT_ENABLE = False
 
-# Publish Pagergate keepalives to MQTT
-MQTT_PUBLISH_KEEPALIVES = True
+class Settings(BaseSettings):   
+    # Allow loading values from environment variables and an optional .env file.
+    # Example: LOGFILE, MQTT_HOST, MQTT_PORT, etc. or put them in a `.env` file.
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8'
+    )
+    
+    DEBUG: bool = False
+    LOGFILE: Optional[str] = None
+    LOGLEVEL: int = 20
 
-# MQTT Broker config
-MQTT = {
-    'HOST': None,
-    'PORT': 1883,
-    'USER': None,
-    'PASS': None,
-}
+    # Publish incident pages to MQTT
+    MQTT_ENABLE: bool = False
 
-# Save each page to a local file
-OUTPUT_FILE = False
-OUTPUT_FILE_PATH = None
+    # Publish Pagergate keepalives to MQTT
+    MQTT_PUBLISH_KEEPALIVES: bool = True
 
-## Format to write the output lines. Currently only json is supported
-OUTPUT_FILE_FORMAT = "json"
+    # MQTT TLS Configuration
+    MQTT_CERTFILE: Optional[str] = None
+    MQTT_KEYFILE: Optional[str] = None
+    MQTT_CACERTS: Optional[str] = None
 
-# Write Pagergate keepalives to file
-OUTPUT_FILE_KEEPALIVES = False
+    MQTT_HOST: Optional[str] = None
+    MQTT_PORT: int = 1883
+    MQTT_USER: Optional[str] = None
+    MQTT_PASS: Optional[str] = None
 
-KEEPALIVE_INTERVAL = 120
-KEEPALIVE_MISSED = 3
+    # Save each page to a local file
+    OUTPUT_FILE: Optional[str] = None
 
-try:
-    from local_settings import *
-except ImportError:
-    pass
+    ## Format to write the output lines. Currently only json is supported
+    OUTPUT_FORMAT: str = "json"
+
+    # Write Pagergate keepalives to file
+    OUTPUT_FILE_KEEPALIVES: bool = False
+
+    KEEPALIVE_INTERVAL: int = 120
+    KEEPALIVE_MISSED: int = 3   
