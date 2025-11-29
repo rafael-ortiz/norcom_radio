@@ -7,7 +7,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-class PageAgency(Enum):
+class PagePSAP(Enum):
     NONE = 0
     NORCOM = 1
     SNO911 = 2
@@ -74,14 +74,14 @@ class PageParser:
 
     def create_page(self, raw_page, capcode, page_alpha, timestamp):
         
-        agency = PageAgency.from_capcode(capcode)
+        psap = PagePSAP.from_capcode(capcode)
 
-        if agency == PageAgency.NORCOM:
+        if psap == PagePSAP.NORCOM:
             return PageNorcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
-        elif agency == PageAgency.VALCOM:
+        elif psap == PagePSAP.VALCOM:
             # VALCOM processor will just discard them for now
             return PageValcom(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
-        elif agency == PageAgency.SNO911:
+        elif psap == PagePSAP.SNO911:
             return PageSnohomish(raw=raw_page, capcode=capcode, alpha=page_alpha, ts=timestamp)
         else:
             # Unknown capcode
@@ -98,7 +98,7 @@ class Page:
     skipped = False
     skip_reason = "unknown"
 
-    agency = PageAgency.NONE
+    psap = PagePSAP.NONE  
 
     raw = None
     capcode = None
@@ -155,7 +155,8 @@ class Page:
         page_data = {
             'timestamp': self.timestamp,
             'capcode': self.capcode,
-            'agency': str(self.agency),
+            'agency': str(self.psap), # TODO: Remove agency after transition
+            'psap': str(self.psap),
             'channel': self.channel,
             'units': self.units,
             'location': {
@@ -174,9 +175,9 @@ class Page:
         return json.dumps(page_data)
 
 class PageSnohomish(Page):
-    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.SNO911):
+    def __init__(self, raw, capcode, alpha, ts=None, psap=PagePSAP.SNO911):
         super().__init__(raw, capcode, alpha)
-        self.agency = agency
+        self.psap = psap
         
     def parse_page(self):
         if self.alpha is None:
@@ -264,9 +265,9 @@ class PageSnohomish(Page):
         return True
 
 class PageNorcom(Page):
-    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.NORCOM):
+    def __init__(self, raw, capcode, alpha, ts=None, psap=PagePSAP.NORCOM):
         super().__init__(raw, capcode, alpha)
-        self.agency = agency
+        self.psap = psap
 
     def parse_page(self):
         if self.alpha is None:
@@ -339,9 +340,9 @@ class PageNorcom(Page):
         return True
     
 class PageValcom(Page):
-    def __init__(self, raw, capcode, alpha, ts=None, agency=PageAgency.VALCOM):
+    def __init__(self, raw, capcode, alpha, ts=None, psap=PagePSAP.VALCOM):
         super().__init__(raw, capcode, alpha)
-        self.agency = agency
+        self.psap = psap
 
     def parse_page(self):
         if self.alpha is None:
