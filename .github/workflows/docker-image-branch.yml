@@ -1,8 +1,8 @@
-name: Build and publish Docker image (GHCR)
+name: Build and publish Image for Branches
 
 on:
   push:
-    branches: [ main ]
+    branches-ignore: [ main ]
     paths-ignore:
       - '.github/workflows/**'
       - '.gitignore'
@@ -32,9 +32,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create short SHA tag
+      - name: Create branch tag
         id: vars
-        run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: |
+          ref=${GITHUB_REF#refs/heads/}
+          safe=${ref//\//-}
+          echo "BRANCH_TAG=$safe" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -43,6 +46,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/norcom_radio:latest
-            ghcr.io/${{ github.repository_owner }}/norcom_radio:${{ steps.vars.outputs.SHORT_SHA }}
+            ghcr.io/${{ github.repository_owner }}/norcom_radio:${{ steps.vars.outputs.BRANCH_TAG }}
           platforms: linux/amd64
