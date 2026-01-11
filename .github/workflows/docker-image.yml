@@ -43,4 +43,3 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/norcom_radio:latest
             ghcr.io/${{ github.repository_owner }}/norcom_radio:${{ steps.vars.outputs.SHORT_SHA }}
           platforms: linux/amd64
-
