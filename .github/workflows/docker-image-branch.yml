@@ -32,12 +32,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create branch tag
+          
+      - name: Create branch and short-sha tags
         id: vars
         run: |
           ref=${GITHUB_REF#refs/heads/}
           safe=${ref//\//-}
           echo "BRANCH_TAG=$safe" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -47,4 +49,5 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/norcom_radio:${{ steps.vars.outputs.BRANCH_TAG }}
+            ghcr.io/${{ github.repository_owner }}/norcom_radio:${{ steps.vars.outputs.SHORT_SHA }}
           platforms: linux/amd64
