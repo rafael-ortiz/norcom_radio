@@ -257,28 +257,52 @@ def main():
             mclient = None
             sys.exit(1)
 
+        
+        # Enable client logger and run the MQTT network loop in a
+        # background thread so blocking reads from stdin won't prevent
+        # keepalive pings from being sent.
+        # try:
+        #     mclient.enable_logger()
+        # except Exception:
+        #     # enable_logger is optional; continue if it fails
+        #     pass
 
-        # Drive the MQTT network loop from the main thread so we can catch
-        # TLS/SSL errors that occur during socket reads.
         connect_start = time.time()
         connect_timeout = 15
-        while not mclient.is_connected():
-            try:
-                # process network events for a short time
-                mclient.loop(timeout=0.1)
-            except ssl.SSLError as err:
-                logger.error("MQTT TLS failure during connection/read: %s", err)
-                mclient = None
-                break
-            except OSError as err:
-                logger.error("MQTT network error during connect: %s", err)
-                mclient = None
-                break
+        try:
+            mclient.loop_start()
+        except Exception:
+            logger.warning("Failed to start MQTT network loop thread; falling back to manual loop")
+            # Fall back to driving the loop from the main thread while
+            # waiting for the initial connect to complete.
+            while not mclient.is_connected():
+                try:
+                    mclient.loop(timeout=0.1)
+                except ssl.SSLError as err:
+                    logger.error("MQTT TLS failure during connection/read: %s", err)
+                    mclient = None
+                    break
+                except OSError as err:
+                    logger.error("MQTT network error during connect: %s", err)
+                    mclient = None
+                    break
 
-            if time.time() - connect_start > connect_timeout:
-                logger.error("Timeout waiting for MQTT connection")
-                mclient = None
-                break
+                if time.time() - connect_start > connect_timeout:
+                    logger.error("Timeout waiting for MQTT connection")
+                    mclient = None
+                    break
+        else:
+            # loop_start succeeded; wait for the connection to establish
+            while not mclient.is_connected():
+                if time.time() - connect_start > connect_timeout:
+                    logger.error("Timeout waiting for MQTT connection")
+                    try:
+                        mclient.loop_stop()
+                    except Exception:
+                        pass
+                    mclient = None
+                    break
+                time.sleep(0.1)
 
         if mclient is None:
             logger.error("Failed to initialize MQTT client, exiting.")
@@ -380,12 +404,20 @@ def main():
                     if round(ka_check - ka_last_received) >= (ka_interval * ka_max):
                         logger.error("Too many missed keepalives, I'm giving up.")
                         if mclient is not None:
+                            try:
+                                mclient.loop_stop()
+                            except Exception:
+                                pass
                             mclient.disconnect(reasoncode=0)
                         sys.exit(1)
 
                 # break
         except KeyboardInterrupt:
             if mclient is not None:
+                try:
+                    mclient.loop_stop()
+                except Exception:
+                    pass
                 mclient.disconnect(reasoncode=0)
             print("")
             sys.exit(0)
