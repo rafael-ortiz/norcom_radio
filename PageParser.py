@@ -182,15 +182,16 @@ class PageSnohomish(Page):
     def parse_page(self):
         if self.alpha is None:
             return None
-        
-        logger.debug("Attempting to parse as SNO911")
 
         parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","")
 
         if "PAGEGATE KEEP ALIVE NORMAL" in parse_alpha:
+            logger.debug("Attempting to parse as SNO911 KEEPALIVE")
             self.call_type = "PAGEGATE KEEPALIVE"
             self.keepalive = True
             return True
+        
+        logger.debug("Attempting to parse as SNO911")
 
         try:
             type_match = re.match(r">>([A-Za-z0-9 -]+)<<", parse_alpha)
@@ -237,8 +238,15 @@ class PageSnohomish(Page):
                 self.skip_reason = "malformed"
                 logger.warning("PARSE FAILED: couldn't parse address fields %s", self.alpha)
                 return False
+            
+            unit_match = re.match(r"\*+([A-Za-z0-9\s,]+)\*?", call_details)
 
-            unit_match = re.match(r"\*([A-Za-z0-9\s,]+)\*?", call_details)
+            if unit_match is None:
+                self.skipped = True
+                self.skip_reason = "malformed"
+                logger.warning("PARSE FAILED: couldn't parse units %s", self.alpha)
+                return False
+
             # Some pages are too long to include all of the units
             if (unit_match.group(0)[-1:] != "*"):
                 # Reached the end of text without the other delimiter
