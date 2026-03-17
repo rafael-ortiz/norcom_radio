@@ -277,6 +277,10 @@ class PageNorcom(Page):
         super().__init__(raw, capcode, alpha)
         self.psap = psap
 
+    def _parse_call_type(self, call_text):
+        call = re.sub(r'[<>]', '', call_text)
+        logger.debug("Parsed call type: %s", call)
+
     def parse_page(self):
         if self.alpha is None:
             return None
@@ -289,28 +293,31 @@ class PageNorcom(Page):
             return True
 
         try:
-            parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","").replace(";;", ";").split(';')
+            parse_alpha = self.alpha.replace("<EOT>","").replace("<NUL>","").split(';')
  
-            if len(parse_alpha) > 7:
+            if len(parse_alpha) != 7:
                 self.skip_reason = "malformed"
                 self.skipped = True
-                logger.error("PARSE FAILED: unexpected field %s", self.alpha)
+                logger.error("PARSE FAILED: unexpected field count: %s", self.alpha)
                 return False
             
             (call, channel, addr_name, addr_street, units, geo_lat, geo_long) = [ None ] * 7
 
-            try:
-                call = parse_alpha[0].strip()
-                channel = parse_alpha[1].strip()
-                addr_name = parse_alpha[2].strip()
-                addr_street = parse_alpha[3].strip()
-                units = parse_alpha[4].strip()
-                geo_lat = parse_alpha[5].strip()
-                geo_long = parse_alpha[6].strip()
-            except IndexError:
-                pass
+            geo_long = parse_alpha.pop()
+            if geo_long is not None:
+                geo_match = re.match(r'-12[0-9]\.[0-9]+',geo_long)
+                if geo_match is not None:
+                    geo_long = geo_match.group(0)
 
+            geo_lat = parse_alpha.pop()
+            if geo_lat is not None:
+                geo_match = re.match(r'47\.[0-9]+',geo_lat)
+                if geo_match is not None:
+                    geo_lat = geo_match.group(0)
 
+            units = parse_alpha.pop()
+
+            addr_street = parse_alpha.pop().strip()
             if addr_street is None:
                 # Don't even bother parsing the rest
                 self.skip_reason = "malformed"
@@ -318,6 +325,10 @@ class PageNorcom(Page):
                 logger.error("PARSE FAILED: Missing expected fields %s", self.alpha)
                 return False
 
+            addr_name = parse_alpha.pop().strip()
+
+            channel = parse_alpha.pop().strip()
+            call = parse_alpha.pop().strip()
 
             call = re.sub(r'[<>]', '', call)
             if "-" in call:
